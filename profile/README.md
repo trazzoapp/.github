@@ -1,53 +1,59 @@
-# trazzo-world
+# Trazzo
 
-Carpeta de trabajo local que agrupa los repositorios del proyecto Trazzo. Esta carpeta en sí **no es un repositorio git** — cada subcarpeta es su propio repo independiente en GitHub, bajo la organización [trazzoapp](https://github.com/trazzoapp):
+Trazzo is a multi-app product built as a set of independent repositories under the [trazzoapp](https://github.com/trazzoapp) organization, sharing a common package ecosystem. This document describes how the repositories fit together and how to set up a full local development environment.
 
-| Carpeta | Repo | Descripción |
-|---|---|---|
-| `trazzo-api` | [trazzoapp/trazzo-api](https://github.com/trazzoapp/trazzo-api) | Backend / API |
-| `trazzo-app` | [trazzoapp/trazzo-app](https://github.com/trazzoapp/trazzo-app) | App móvil (Expo) |
-| `trazzo-clients` | [trazzoapp/trazzo-clients](https://github.com/trazzoapp/trazzo-clients) | Web de clientes (Next.js) |
-| `trazzo-landing` | [trazzoapp/trazzo-landing](https://github.com/trazzoapp/trazzo-landing) | Landing page (Next.js) |
-| `trazzo-packages` | [trazzoapp/trazzo-packages](https://github.com/trazzoapp/trazzo-packages) | Paquetes compartidos, publicados en GitHub Packages bajo el scope `@trazzoapp/*` (ui, core, icons, logger, api-client, mock-api, config, storybook) |
-| `trazzo-webapp` | [trazzoapp/trazzo-webapp](https://github.com/trazzoapp/trazzo-webapp) | Web app principal (Next.js) |
+## Repositories
 
-Todos los repos son **privados**.
+| Repository | Description |
+|---|---|
+| [trazzo-api](https://github.com/trazzoapp/trazzo-api) | Backend API and worker services |
+| [trazzo-app](https://github.com/trazzoapp/trazzo-app) | Mobile application (Expo) |
+| [trazzo-clients](https://github.com/trazzoapp/trazzo-clients) | Client-facing web application (Next.js) |
+| [trazzo-landing](https://github.com/trazzoapp/trazzo-landing) | Marketing landing page (Next.js) |
+| [trazzo-packages](https://github.com/trazzoapp/trazzo-packages) | Shared packages published to GitHub Packages under the `@trazzoapp/*` scope (ui, core, icons, logger, api-client, mock-api, config, storybook) |
+| [trazzo-webapp](https://github.com/trazzoapp/trazzo-webapp) | Main web application (Next.js) |
 
-## Paquetes compartidos (`@trazzoapp/*`)
+All repositories are private and are developed side by side in a single local working directory (`trazzo-world`), with this document itself kept as a root-level README there. Each repository manages its own git history, CI, and deployment pipeline independently.
 
-Los paquetes de `trazzo-packages` ya no se consumen vía `file:` entre carpetas hermanas — se publican a GitHub Packages (`npm.pkg.github.com`) bajo el scope `@trazzoapp`, y cada repo consumidor los instala como una dependencia normal con versión (`"@trazzoapp/ui": "^0.1.0"`). Esto es necesario porque hosts como Vercel o EAS build solo clonan el repo que les conectas, sin acceso a carpetas hermanas de otro repo.
+## Shared packages (`@trazzoapp/*`)
 
-Para instalar estos paquetes (local o en CI) necesitas un `.npmrc` con:
+Shared code lives in `trazzo-packages` and is distributed as versioned npm packages rather than consumed via local `file:` references between sibling folders. Packages are published to GitHub Packages (`npm.pkg.github.com`) under the `@trazzoapp` scope, and every consuming repository installs them as a normal versioned dependency (e.g. `"@trazzoapp/ui": "^0.1.0"`). This decoupling is required because hosting providers such as Vercel or EAS Build only clone the single repository they are connected to, with no access to sibling folders from another repository.
+
+### Installing shared packages
+
+To install `@trazzoapp/*` packages, both locally and in CI, add an `.npmrc` with:
 
 ```
 @trazzoapp:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-y la variable de entorno `NODE_AUTH_TOKEN` con un Personal Access Token classic (scopes `read:packages`, y `repo` si el paquete es de un repo privado). En Vercel/GitHub Actions, configúrala como secret.
+and set the `NODE_AUTH_TOKEN` environment variable to a classic Personal Access Token with the `read:packages` scope (and `repo` if the package belongs to a private repository). On Vercel or in GitHub Actions, configure this token as a secret.
 
-Publicar un cambio: bump de versión en el `package.json` del paquete afectado dentro de `trazzo-packages` y push a `main` — el workflow `.github/workflows/publish.yml` publica automáticamente.
+### Publishing a change
 
-### Probar cambios de `trazzo-packages` sin publicar
+Bump the version in the affected package's `package.json` inside `trazzo-packages` and push to `main`. The `.github/workflows/publish.yml` workflow publishes the new version automatically.
 
-Para iterar rápido en un paquete compartido y ver el efecto en un consumidor sin pasar por bump de versión + publish + reinstall, usa los scripts en [`scripts/`](scripts):
+### Iterating on a shared package without publishing
+
+To iterate quickly on a shared package and see the effect in a consumer without going through a version bump, publish, and reinstall cycle, use the helper scripts in [`scripts/`](scripts):
 
 ```bash
-# Enlaza todos los consumidores a tu checkout local de trazzo-packages
+# Link every consumer to your local trazzo-packages checkout
 ./scripts/link-packages.sh
 
-# O solo uno/algunos
+# Or link a specific subset
 ./scripts/link-packages.sh trazzo-webapp
 
-# Cuando termines, vuelve a las versiones publicadas
+# Restore the published versions when done
 ./scripts/unlink-packages.sh
 ```
 
-Esto usa `pnpm link` (symlinks globales), no modifica ningún `package.json`. Después de editar un paquete en `trazzo-packages`, corre `pnpm build` ahí (o `pnpm dev` dentro del paquete específico para watch mode) para que el consumidor enlazado vea el cambio.
+These scripts use `pnpm link` (global symlinks) and never modify any `package.json`. After editing a package in `trazzo-packages`, run `pnpm build` there (or `pnpm dev` inside the specific package for watch mode) so linked consumers pick up the change.
 
-## Clonar todo
+## Setting up the full workspace
 
-Clona cada repo dentro de esta misma carpeta (`trazzo-world`), conservando los nombres de carpeta:
+Clone every repository into a shared parent directory, keeping the folder names below:
 
 ```bash
 git clone git@github.com:trazzoapp/trazzo-api.git
@@ -58,7 +64,7 @@ git clone git@github.com:trazzoapp/trazzo-packages.git
 git clone git@github.com:trazzoapp/trazzo-webapp.git
 ```
 
-O con `gh` (HTTPS, usa tu sesión autenticada):
+Or, using the GitHub CLI over HTTPS with your authenticated session:
 
 ```bash
 gh repo clone trazzoapp/trazzo-api
@@ -69,7 +75,7 @@ gh repo clone trazzoapp/trazzo-packages
 gh repo clone trazzoapp/trazzo-webapp
 ```
 
-Después instala dependencias en cada uno (todos usan `pnpm`):
+Then install dependencies in each one (all projects use `pnpm`):
 
 ```bash
 for d in trazzo-api trazzo-app trazzo-clients trazzo-landing trazzo-packages trazzo-webapp; do
@@ -77,17 +83,17 @@ for d in trazzo-api trazzo-app trazzo-clients trazzo-landing trazzo-packages tra
 done
 ```
 
-## Scripts de conveniencia
+## Convenience scripts
 
-El `package.json` de esta carpeta raíz no es un paquete publicado, solo expone atajos que delegan en cada subproyecto vía `pnpm -C`:
+The root `package.json` is not a published package — it only exposes shortcuts that delegate to each subproject via `pnpm -C`:
 
 ```bash
-pnpm dev:api        # levanta el backend
-pnpm dev:webapp      # levanta la web app
-pnpm dev:clients     # levanta la web de clientes
-pnpm dev:landing     # levanta la landing
-pnpm dev:app         # levanta la app móvil (Expo)
-pnpm dev:worker      # levanta el worker del backend
+pnpm dev:api         # start the backend
+pnpm dev:webapp       # start the main web app
+pnpm dev:clients      # start the client-facing web app
+pnpm dev:landing      # start the landing page
+pnpm dev:app          # start the mobile app (Expo)
+pnpm dev:worker       # start the backend worker
 
 pnpm build:api
 pnpm build:webapp
@@ -99,8 +105,8 @@ pnpm lint:api / lint:app / lint:clients / lint:landing / lint:webapp
 pnpm typecheck:api / typecheck:app / typecheck:clients / typecheck:landing / typecheck:webapp / typecheck:packages
 ```
 
-Estos scripts asumen que las 6 carpetas existen junto a este `package.json`, como se obtiene siguiendo los pasos de clonado de arriba.
+These scripts assume all six repositories are cloned alongside this `package.json`, as described above.
 
-## Variables de entorno
+## Environment variables
 
-Cada repo gestiona sus propias variables de entorno (`.env`, `.env.local`, etc.), que están en `.gitignore` y nunca se suben a GitHub. Revisa el `.env.example` / `.env.local.example` de cada proyecto para saber qué variables configurar localmente.
+Each repository manages its own environment variables (`.env`, `.env.local`, etc.), which are git-ignored and never committed. Refer to each project's `.env.example` or `.env.local.example` to see which variables need to be configured locally.
