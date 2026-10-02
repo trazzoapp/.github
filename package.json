@@ -1,0 +1,29 @@
+{
+  "name": "trazzo-world",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm -C trazzo-api dev",
+    "dev:app": "pnpm -C trazzo-app start",
+    "dev:clients": "pnpm -C trazzo-clients dev",
+    "dev:landing": "pnpm -C trazzo-landing dev",
+    "dev:webapp": "pnpm -C trazzo-webapp dev",
+    "dev:worker": "pnpm -C trazzo-api dev:worker",
+    "build:api": "pnpm -C trazzo-api build",
+    "build:clients": "pnpm -C trazzo-clients build",
+    "build:landing": "pnpm -C trazzo-landing build",
+    "build:webapp": "pnpm -C trazzo-webapp build",
+    "build:packages": "pnpm -C trazzo-packages build",
+    "lint:api": "pnpm -C trazzo-api lint",
+    "lint:app": "pnpm -C trazzo-app lint",
+    "lint:clients": "pnpm -C trazzo-clients lint",
+    "lint:landing": "pnpm -C trazzo-landing lint",
+    "lint:webapp": "pnpm -C trazzo-webapp lint",
+    "typecheck:api": "pnpm -C trazzo-api typecheck",
+    "typecheck:app": "pnpm -C trazzo-app typecheck",
+    "typecheck:clients": "pnpm -C trazzo-clients typecheck",
+    "typecheck:landing": "pnpm -C trazzo-landing typecheck",
+    "typecheck:webapp": "pnpm -C trazzo-webapp typecheck",
+    "typecheck:packages": "pnpm -C trazzo-packages typecheck"
+  }
+}
