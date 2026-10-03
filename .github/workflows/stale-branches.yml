@@ -1,0 +1,36 @@
+name: Remove stale branches (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      days-before-branch-stale:
+        description: "Days since last commit before a branch is marked stale and commented on"
+        type: number
+        default: 30
+      days-before-branch-delete:
+        description: "Additional days after a branch is marked stale before it gets deleted"
+        type: number
+        default: 15
+      exempt-branches-regex:
+        description: "Branches that are never touched"
+        type: string
+        default: '^(main|master|develop)$'
+      dry-run:
+        description: "Preview only, no comments or deletions"
+        type: boolean
+        default: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: fpicalausa/remove-stale-branches@v2.6.1
+        with:
+          dry-run: ${{ inputs.dry-run }}
+          days-before-branch-stale: ${{ inputs.days-before-branch-stale }}
+          days-before-branch-delete: ${{ inputs.days-before-branch-delete }}
+          exempt-branches-regex: ${{ inputs.exempt-branches-regex }}
+          ignore-branches-with-open-prs: true
