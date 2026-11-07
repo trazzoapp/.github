@@ -1,62 +1,41 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import Onboarding from "./Onboarding.jsx";
+import AppCard from "./AppCard.jsx";
+import LogsModal from "./LogsModal.jsx";
 
-function GitBadge({ git }) {
-  if (!git || !git.ok) return <span className="badge badge-muted">no git</span>;
+function PortsTab({ ports, onKill }) {
+  if (ports.length === 0) {
+    return <p className="muted">No hay puertos TCP escuchando.</p>;
+  }
   return (
-    <span className="git-info">
-      <span className="badge badge-branch">{git.branch ?? "detached"}</span>
-      {git.ahead > 0 && <span className="badge badge-ahead">↑{git.ahead}</span>}
-      {git.behind > 0 && <span className="badge badge-behind">↓{git.behind}</span>}
-      {git.dirty > 0 ? (
-        <span className="badge badge-dirty">{git.dirty} dirty</span>
-      ) : (
-        <span className="badge badge-clean">clean</span>
-      )}
-    </span>
-  );
-}
-
-function AppRow({ app, onStart, onStop, onViewLogs, active }) {
-  return (
-    <div className={`app-row ${active ? "app-row-active" : ""}`}>
-      <div className="app-row-main">
-        <span className={`dot ${app.running ? "dot-on" : "dot-off"}`} />
-        <div className="app-row-name">
-          <strong>{app.name}</strong>
-          <span className="dir">{app.dir}</span>
+    <div className="port-grid">
+      {ports.map((p) => (
+        <div className="card port-card" key={`${p.port}-${p.pid}`}>
+          <span className="badge badge-port">:{p.port}</span>
+          <div className="port-card-info">
+            <strong>{p.command ?? "?"}</strong>
+            <span className="muted">pid {p.pid}</span>
+          </div>
+          <button className="btn btn-sm btn-danger" onClick={() => onKill(p.port)}>
+            Matar
+          </button>
         </div>
-        <GitBadge git={app.git} />
-        {app.port && <span className="badge badge-port">:{app.port}</span>}
-      </div>
-      <div className="app-row-actions">
-        <button className="btn btn-sm" onClick={() => onViewLogs(app.id)}>
-          Logs
-        </button>
-        {app.running ? (
-          <button className="btn btn-sm btn-danger" onClick={() => onStop(app.id)}>
-            Stop
-          </button>
-        ) : (
-          <button
-            className="btn btn-sm btn-primary"
-            disabled={!app.scriptName}
-            title={!app.scriptName ? "no dev/start script" : undefined}
-            onClick={() => onStart(app.id)}
-          >
-            Start
-          </button>
-        )}
-      </div>
+      ))}
     </div>
   );
 }
 
 export default function App() {
+  const [rootDir, setRootDir] = useState(undefined); // undefined = loading
+  const [tab, setTab] = useState("apps");
   const [apps, setApps] = useState([]);
   const [ports, setPorts] = useState([]);
-  const [activeLogApp, setActiveLogApp] = useState(null);
+  const [logsAppId, setLogsAppId] = useState(null);
   const [logs, setLogs] = useState([]);
-  const logsEndRef = useRef(null);
+
+  useEffect(() => {
+    window.trazzo.getConfig().then((c) => setRootDir(c.rootDir ?? null));
+  }, []);
 
   async function refreshStatus() {
     const status = await window.trazzo.getStatus();
@@ -69,6 +48,7 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (!rootDir) return;
     refreshStatus();
     refreshPorts();
     const interval = setInterval(() => {
@@ -78,9 +58,10 @@ export default function App() {
 
     const offChanged = window.trazzo.onAppChanged(() => refreshStatus());
     const offLog = window.trazzo.onLogAppend(({ id, line }) => {
-      if (id === activeLogApp) {
-        setLogs((prev) => [...prev.slice(-500), line]);
-      }
+      setLogsAppId((current) => {
+        if (id === current) setLogs((prev) => [...prev.slice(-500), line]);
+        return current;
+      });
     });
 
     return () => {
@@ -88,15 +69,20 @@ export default function App() {
       offChanged();
       offLog();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLogApp]);
+  }, [rootDir]);
 
-  useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ block: "end" });
-  }, [logs]);
+  async function handlePickFolder() {
+    const c = await window.trazzo.pickFolder();
+    setRootDir(c.rootDir ?? null);
+  }
+
+  async function handleChangeFolder() {
+    const c = await window.trazzo.pickFolder();
+    if (c.rootDir) setRootDir(c.rootDir);
+  }
 
   async function handleViewLogs(id) {
-    setActiveLogApp(id);
+    setLogsAppId(id);
     const existing = await window.trazzo.getLogs(id);
     setLogs(existing);
   }
@@ -127,63 +113,62 @@ export default function App() {
     refreshStatus();
   }
 
-  const activeApp = apps.find((a) => a.id === activeLogApp);
+  if (rootDir === undefined) return null; // loading config
+  if (!rootDir) return <Onboarding onPickFolder={handlePickFolder} />;
+
+  const logsApp = apps.find((a) => a.id === logsAppId) ?? null;
 
   return (
     <div className="shell">
       <header className="toolbar">
-        <h1>Trazzo Control</h1>
+        <div className="toolbar-title">
+          <h1>Trazzo Control</h1>
+          <button className="folder-pill" onClick={handleChangeFolder} title={rootDir}>
+            📁 {rootDir.split("/").pop()}
+          </button>
+        </div>
         <div className="toolbar-actions">
           <button className="btn btn-primary" onClick={handleStartAll}>
-            Start all
+            Arrancar todo
           </button>
           <button className="btn btn-danger" onClick={handleStopAll}>
-            Stop all
+            Parar todo
           </button>
         </div>
       </header>
 
+      <nav className="tabs">
+        <button className={`tab ${tab === "apps" ? "tab-active" : ""}`} onClick={() => setTab("apps")}>
+          Apps ({apps.length})
+        </button>
+        <button className={`tab ${tab === "ports" ? "tab-active" : ""}`} onClick={() => setTab("ports")}>
+          Puertos ({ports.length})
+        </button>
+      </nav>
+
       <main className="main">
-        <section className="panel panel-apps">
-          <h2>Repos</h2>
-          <div className="app-list">
-            {apps.map((app) => (
-              <AppRow
-                key={app.id}
-                app={app}
-                active={app.id === activeLogApp}
-                onStart={handleStart}
-                onStop={handleStop}
-                onViewLogs={handleViewLogs}
-              />
-            ))}
-            {apps.length === 0 && <p className="muted">No apps discovered yet…</p>}
-          </div>
-
-          <h2>Ports in use</h2>
-          <div className="port-list">
-            {ports.map((p) => (
-              <div className="port-row" key={`${p.port}-${p.pid}`}>
-                <span className="badge badge-port">:{p.port}</span>
-                <span className="muted">{p.command ?? "?"}</span>
-                <span className="muted">pid {p.pid}</span>
-                <button className="btn btn-sm btn-danger" onClick={() => handleKillPort(p.port)}>
-                  Kill
-                </button>
-              </div>
-            ))}
-            {ports.length === 0 && <p className="muted">No listening TCP ports found.</p>}
-          </div>
-        </section>
-
-        <section className="panel panel-logs">
-          <h2>{activeApp ? `Logs — ${activeApp.name}` : "Logs"}</h2>
-          <pre className="log-view">
-            {logs.length === 0 ? "Select an app to view its logs." : logs.join("")}
-            <div ref={logsEndRef} />
-          </pre>
-        </section>
+        {tab === "apps" ? (
+          apps.length === 0 ? (
+            <p className="muted">No se encontraron repos con package.json en esta carpeta.</p>
+          ) : (
+            <div className="app-grid">
+              {apps.map((app) => (
+                <AppCard
+                  key={app.id}
+                  app={app}
+                  onStart={handleStart}
+                  onStop={handleStop}
+                  onViewLogs={handleViewLogs}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+          <PortsTab ports={ports} onKill={handleKillPort} />
+        )}
       </main>
+
+      <LogsModal app={logsApp} logs={logs} onClose={() => setLogsAppId(null)} />
     </div>
   );
 }

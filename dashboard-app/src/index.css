@@ -19,6 +19,8 @@ body {
   height: 100vh;
 }
 
+/* Toolbar */
+
 .toolbar {
   display: flex;
   align-items: center;
@@ -26,6 +28,12 @@ body {
   padding: 12px 20px;
   border-bottom: 1px solid #22262e;
   background: #15181e;
+}
+
+.toolbar-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .toolbar h1 {
@@ -38,79 +46,122 @@ body {
   gap: 8px;
 }
 
-.main {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 16px;
-  padding: 16px;
-  overflow: hidden;
+.folder-pill {
+  border: 1px solid #2c313b;
+  background: #1a1e25;
+  color: #9aa2ad;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.panel {
+.folder-pill:hover {
+  background: #20242c;
+  color: #e6e8eb;
+}
+
+/* Tabs */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px 0;
+  background: #15181e;
+  border-bottom: 1px solid #22262e;
+}
+
+.tab {
+  border: none;
+  background: transparent;
+  color: #9aa2ad;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+  color: #e6e8eb;
+}
+
+.tab-active {
+  color: #e6e8eb;
+  border-bottom-color: #3a7afe;
+}
+
+/* Main / grids */
+
+.main {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.port-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.card {
   background: #15181e;
   border: 1px solid #22262e;
   border-radius: 10px;
   padding: 14px;
-  overflow-y: auto;
 }
 
-.panel h2 {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #9aa2ad;
-  margin: 14px 0 8px;
-}
-
-.panel h2:first-child {
-  margin-top: 0;
-}
-
-.app-list,
-.port-list {
+.app-card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.app-row,
-.port-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #1a1e25;
-  border: 1px solid transparent;
-}
-
-.app-row-active {
-  border-color: #3a7afe;
-}
-
-.app-row-main {
-  display: flex;
-  align-items: center;
   gap: 10px;
+}
+
+.app-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-card-title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-width: 0;
 }
 
-.app-row-name {
-  display: flex;
-  flex-direction: column;
-  min-width: 90px;
-}
-
-.app-row-name .dir {
+.app-card-title .dir {
   font-size: 11px;
   color: #6b7280;
 }
 
-.app-row-actions {
+.app-card-actions {
   display: flex;
   gap: 6px;
+  margin-top: auto;
 }
+
+.port-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.port-card-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+
+/* Badges */
 
 .dot {
   width: 9px;
@@ -182,6 +233,8 @@ body {
   font-size: 12px;
 }
 
+/* Buttons */
+
 .btn {
   border: 1px solid #2c313b;
   background: #20242c;
@@ -205,6 +258,12 @@ body {
   padding: 4px 8px;
 }
 
+.btn-lg {
+  padding: 12px 20px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
 .btn-primary {
   background: #2a5bd7;
   border-color: #2a5bd7;
@@ -223,15 +282,98 @@ body {
   background: #8f3333;
 }
 
+/* Onboarding */
+
+.onboarding {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.onboarding-card {
+  max-width: 520px;
+  background: #15181e;
+  border: 1px solid #22262e;
+  border-radius: 14px;
+  padding: 32px;
+}
+
+.onboarding-card h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.onboarding-lede {
+  color: #9aa2ad;
+  margin: 0 0 20px;
+}
+
+.onboarding-steps {
+  margin: 0 0 26px;
+  padding-left: 20px;
+  color: #c3c9d3;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.onboarding-steps li + li {
+  margin-top: 10px;
+}
+
+.onboarding-steps code {
+  background: #1f232b;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Logs modal */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal {
+  width: min(800px, 90vw);
+  height: min(560px, 80vh);
+  background: #15181e;
+  border: 1px solid #22262e;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
 .log-view {
+  flex: 1;
   background: #0b0d11;
   border: 1px solid #22262e;
   border-radius: 8px;
   padding: 10px;
-  height: calc(100% - 30px);
   overflow-y: auto;
   font-size: 12px;
   font-family: ui-monospace, Menlo, monospace;
   white-space: pre-wrap;
   word-break: break-word;
+  margin: 0;
 }
