@@ -36,10 +36,20 @@ let rootDir = null;
 const running = new Map();
 let mainWindow = null;
 
+const activityLog = [];
+
 function send(channel, payload) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(channel, payload);
   }
+}
+
+function logActivity(level, message) {
+  const entry = { ts: new Date().toISOString(), level, message };
+  activityLog.push(entry);
+  if (activityLog.length > 300) activityLog.shift();
+  console.log(`[trazzo:${level}]`, message);
+  send("activity:append", entry);
 }
 
 function requireRoot() {
@@ -144,31 +154,62 @@ function pushLog(id, line) {
   send("logs:append", { id, line });
 }
 
+// GUI apps on macOS/Linux don't inherit the PATH set up by .zshrc/.bashrc
+// (nvm, pnpm, etc.), because they're launched by launchd/the Dock, not a
+// shell. Running the command through a login+interactive shell makes it
+// see the same PATH the user's terminal does.
+function spawnDevProcess(appDef, root) {
+  const command = `pnpm -C ${JSON.stringify(appDef.dir)} run ${JSON.stringify(appDef.scriptName)}`;
+  if (process.platform === "win32") {
+    return { proc: spawn(command, { cwd: root, shell: true, env: process.env }), command };
+  }
+  const userShell = process.env.SHELL || "/bin/zsh";
+  return {
+    proc: spawn(userShell, ["-ilc", command], {
+      cwd: root,
+      env: process.env,
+      detached: true,
+    }),
+    command: `${userShell} -ilc ${JSON.stringify(command)}`,
+  };
+}
+
 function startApp(id) {
-  if (running.has(id)) return { ok: false, error: "already running" };
-  const root = requireRoot();
+  if (running.has(id)) {
+    logActivity("warn", `start ${id}: ya está corriendo`);
+    return { ok: false, error: "already running" };
+  }
+  let root;
+  try {
+    root = requireRoot();
+  } catch (err) {
+    logActivity("error", `start ${id}: ${err.message}`);
+    return { ok: false, error: err.message };
+  }
   const apps = discoverApps();
   const appDef = apps.find((a) => a.id === id);
-  if (!appDef || !appDef.scriptName) return { ok: false, error: "no dev/start script" };
+  if (!appDef || !appDef.scriptName) {
+    logActivity("error", `start ${id}: no tiene script "dev" ni "start" en package.json`);
+    return { ok: false, error: "no dev/start script" };
+  }
 
-  const proc = spawn("pnpm", ["-C", appDef.dir, "run", appDef.scriptName], {
-    cwd: root,
-    shell: process.platform === "win32",
-    env: process.env,
-    detached: process.platform !== "win32",
-  });
+  const { proc, command } = spawnDevProcess(appDef, root);
+  logActivity("info", `start ${id}: ejecutando "${command}" (cwd=${root}, pid=${proc.pid ?? "?"})`);
   running.set(id, { proc, logs: [] });
 
   proc.stdout?.on("data", (chunk) => pushLog(id, chunk.toString()));
   proc.stderr?.on("data", (chunk) => pushLog(id, chunk.toString()));
-  proc.on("exit", (code) => {
+  proc.on("exit", (code, signal) => {
     running.delete(id);
-    pushLog(id, `\n[process exited with code ${code}]\n`);
+    const reason = signal ? `señal ${signal}` : `código ${code}`;
+    pushLog(id, `\n[proceso terminado: ${reason}]\n`);
+    logActivity(code === 0 || signal ? "info" : "error", `${id}: proceso terminó (${reason})`);
     send("apps:changed", { id, running: false });
   });
   proc.on("error", (err) => {
     running.delete(id);
-    pushLog(id, `\n[failed to start: ${err.message}]\n`);
+    pushLog(id, `\n[no se pudo arrancar: ${err.message}]\n`);
+    logActivity("error", `${id}: fallo al arrancar — ${err.message}`);
     send("apps:changed", { id, running: false });
   });
 
@@ -178,13 +219,18 @@ function startApp(id) {
 
 function stopApp(id) {
   const entry = running.get(id);
-  if (!entry) return { ok: false, error: "not running" };
+  if (!entry) {
+    logActivity("warn", `stop ${id}: no está corriendo`);
+    return { ok: false, error: "not running" };
+  }
+  logActivity("info", `stop ${id}: enviando señal a pid ${entry.proc.pid}`);
   if (process.platform === "win32") {
     spawn("taskkill", ["/pid", String(entry.proc.pid), "/f", "/t"]);
   } else {
     try {
       process.kill(-entry.proc.pid, "SIGTERM");
-    } catch {
+    } catch (err) {
+      logActivity("warn", `stop ${id}: kill de grupo falló (${err.message}), probando kill directo`);
       entry.proc.kill("SIGTERM");
     }
   }
@@ -264,9 +310,12 @@ ipcMain.handle("config:pick-folder", async () => {
   if (result.canceled || !result.filePaths[0]) return { rootDir };
   rootDir = result.filePaths[0];
   saveConfig({ ...loadConfig(), rootDir });
+  const found = discoverApps();
+  logActivity("info", `carpeta elegida: ${rootDir} (${found.length} repos detectados)`);
   return { rootDir };
 });
 ipcMain.handle("config:clear-folder", () => {
+  logActivity("info", "carpeta de proyectos olvidada");
   rootDir = null;
   saveConfig({ ...loadConfig(), rootDir: null });
   return { rootDir };
@@ -289,21 +338,30 @@ ipcMain.handle("apps:start", (_e, id) => startApp(id));
 ipcMain.handle("apps:stop", (_e, id) => stopApp(id));
 ipcMain.handle("apps:start-all", () => {
   const apps = discoverApps();
+  logActivity("info", `arrancar todo: ${apps.length} repos`);
   return apps.map((a) => ({ id: a.id, ...startApp(a.id) }));
 });
 ipcMain.handle("apps:stop-all", () => {
   const ids = [...running.keys()];
+  logActivity("info", `parar todo: ${ids.length} procesos corriendo`);
   return ids.map((id) => ({ id, ...stopApp(id) }));
 });
 ipcMain.handle("logs:get", (_e, id) => running.get(id)?.logs ?? []);
 ipcMain.handle("ports:list", () => listPorts());
-ipcMain.handle("ports:kill", (_e, port) => killPort(port));
+ipcMain.handle("ports:kill", (_e, port) => {
+  logActivity("info", `matando puerto ${port}`);
+  return killPort(port);
+});
 ipcMain.handle("shell:open", (_e, url) => shell.openExternal(url));
+ipcMain.handle("activity:get", () => activityLog);
 
 function createWindow() {
   const config = loadConfig();
   if (config.rootDir && fs.existsSync(config.rootDir)) {
     rootDir = config.rootDir;
+    logActivity("info", `carpeta recordada: ${rootDir}`);
+  } else {
+    logActivity("info", "sin carpeta de proyectos guardada todavía");
   }
 
   mainWindow = new BrowserWindow({

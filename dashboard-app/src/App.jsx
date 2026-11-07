@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Onboarding from "./Onboarding.jsx";
 import AppCard from "./AppCard.jsx";
 import LogsModal from "./LogsModal.jsx";
+import ActivityLog from "./ActivityLog.jsx";
 
 function PortsTab({ ports, onKill }) {
   if (ports.length === 0) {
@@ -88,12 +89,14 @@ export default function App() {
   }
 
   async function handleStart(id) {
-    await window.trazzo.startApp(id);
+    const result = await window.trazzo.startApp(id);
+    if (!result.ok) window.alert(`No se pudo arrancar ${id}: ${result.error}`);
     refreshStatus();
   }
 
   async function handleStop(id) {
-    await window.trazzo.stopApp(id);
+    const result = await window.trazzo.stopApp(id);
+    if (!result.ok) window.alert(`No se pudo parar ${id}: ${result.error}`);
     refreshStatus();
   }
 
@@ -169,6 +172,7 @@ export default function App() {
       </main>
 
       <LogsModal app={logsApp} logs={logs} onClose={() => setLogsAppId(null)} />
+      <ActivityLog />
     </div>
   );
 }
