@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("trazzo", {
+  getConfig: () => ipcRenderer.invoke("config:get"),
+  pickFolder: () => ipcRenderer.invoke("config:pick-folder"),
+  clearFolder: () => ipcRenderer.invoke("config:clear-folder"),
   listApps: () => ipcRenderer.invoke("apps:list"),
   getStatus: () => ipcRenderer.invoke("apps:status"),
   startApp: (id) => ipcRenderer.invoke("apps:start", id),

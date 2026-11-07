@@ -1,9 +1,8 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { spawn, execFile } = require("node:child_process");
 
-const ROOT = path.resolve(__dirname, "..", "..");
 const IGNORE_DIRS = new Set([
   "node_modules",
   "dashboard-app",
@@ -16,6 +15,23 @@ const IGNORE_DIRS = new Set([
   "release",
 ]);
 
+const CONFIG_PATH = () => path.join(app.getPath("userData"), "config.json");
+
+function loadConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function saveConfig(config) {
+  fs.mkdirSync(path.dirname(CONFIG_PATH()), { recursive: true });
+  fs.writeFileSync(CONFIG_PATH(), JSON.stringify(config, null, 2));
+}
+
+/** @type {string|null} */
+let rootDir = null;
 /** @type {Map<string, { proc: import('node:child_process').ChildProcess, logs: string[] }>} */
 const running = new Map();
 let mainWindow = null;
@@ -26,12 +42,18 @@ function send(channel, payload) {
   }
 }
 
+function requireRoot() {
+  if (!rootDir) throw new Error("no project folder selected");
+  return rootDir;
+}
+
 function discoverApps() {
-  const entries = fs.readdirSync(ROOT, { withFileTypes: true });
+  if (!rootDir) return [];
+  const entries = fs.readdirSync(rootDir, { withFileTypes: true });
   const apps = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || IGNORE_DIRS.has(entry.name)) continue;
-    const dir = path.join(ROOT, entry.name);
+    const dir = path.join(rootDir, entry.name);
     const pkgPath = path.join(dir, "package.json");
     if (!fs.existsSync(pkgPath)) continue;
     let pkg;
@@ -77,7 +99,7 @@ function discoverApps() {
 
 function gitStatus(dirName) {
   return new Promise((resolve) => {
-    const dir = path.join(ROOT, dirName);
+    const dir = path.join(rootDir, dirName);
     execFile(
       "git",
       ["-C", dir, "status", "--porcelain=v2", "--branch"],
@@ -124,12 +146,13 @@ function pushLog(id, line) {
 
 function startApp(id) {
   if (running.has(id)) return { ok: false, error: "already running" };
+  const root = requireRoot();
   const apps = discoverApps();
   const appDef = apps.find((a) => a.id === id);
   if (!appDef || !appDef.scriptName) return { ok: false, error: "no dev/start script" };
 
   const proc = spawn("pnpm", ["-C", appDef.dir, "run", appDef.scriptName], {
-    cwd: ROOT,
+    cwd: root,
     shell: process.platform === "win32",
     env: process.env,
     detached: process.platform !== "win32",
@@ -232,8 +255,26 @@ function killPort(port) {
   });
 }
 
+ipcMain.handle("config:get", () => ({ rootDir }));
+ipcMain.handle("config:pick-folder", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "Select the folder that contains your project repos",
+    properties: ["openDirectory"],
+  });
+  if (result.canceled || !result.filePaths[0]) return { rootDir };
+  rootDir = result.filePaths[0];
+  saveConfig({ ...loadConfig(), rootDir });
+  return { rootDir };
+});
+ipcMain.handle("config:clear-folder", () => {
+  rootDir = null;
+  saveConfig({ ...loadConfig(), rootDir: null });
+  return { rootDir };
+});
+
 ipcMain.handle("apps:list", () => discoverApps());
 ipcMain.handle("apps:status", async () => {
+  if (!rootDir) return [];
   const apps = discoverApps();
   const result = await Promise.all(
     apps.map(async (a) => ({
@@ -260,6 +301,11 @@ ipcMain.handle("ports:kill", (_e, port) => killPort(port));
 ipcMain.handle("shell:open", (_e, url) => shell.openExternal(url));
 
 function createWindow() {
+  const config = loadConfig();
+  if (config.rootDir && fs.existsSync(config.rootDir)) {
+    rootDir = config.rootDir;
+  }
+
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
