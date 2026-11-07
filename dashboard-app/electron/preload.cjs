@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld("trazzo", {
   listPorts: () => ipcRenderer.invoke("ports:list"),
   killPort: (port) => ipcRenderer.invoke("ports:kill", port),
   openExternal: (url) => ipcRenderer.invoke("shell:open", url),
+  getActivity: () => ipcRenderer.invoke("activity:get"),
+  onActivity: (cb) => {
+    const handler = (_e, entry) => cb(entry);
+    ipcRenderer.on("activity:append", handler);
+    return () => ipcRenderer.removeListener("activity:append", handler);
+  },
   onLogAppend: (cb) => {
     const handler = (_e, payload) => cb(payload);
     ipcRenderer.on("logs:append", handler);
