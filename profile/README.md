@@ -51,13 +51,7 @@ To iterate quickly on a shared package and see the effect in a consumer without 
 
 These scripts use `pnpm link <path>` (not global links) and write `link:` overrides into each consumer's `pnpm-workspace.yaml`. After editing a package in `trazzo-packages`, run `pnpm build` there (or `pnpm dev` inside the specific package for watch mode) so linked consumers pick up the change.
 
-To link, open one Terminal/iTerm console per app, and open the local dashboard:
-
-```bash
-pnpm dev:all
-```
-
-The dashboard lives at `http://127.0.0.1:3999` (`dashboard/index.html`). It probes each app and has shortcuts to open live URLs or stop everything.
+Daily start/stop commands (all apps vs one app, `SKIP_LINK`, ports, dashboard) live in the workspace [`README.md`](../README.md).
 
 ## Setting up the full workspace
 
@@ -93,27 +87,29 @@ done
 
 ## Convenience scripts
 
-The root `package.json` is not a published package — it only exposes shortcuts that delegate to each subproject via `pnpm -C`:
+The root `package.json` is not a published package — it only exposes shortcuts that delegate to each subproject via `pnpm -C`. See the workspace [`README.md`](../README.md) for start/stop.
 
 ```bash
-pnpm dev:api         # start the backend
-pnpm dev:webapp       # start the main web app
-pnpm dev:clients      # start the client-facing web app
-pnpm dev:landing      # start the landing page
-pnpm dev:app          # start the mobile app (Expo)
-pnpm dev:worker       # start the backend worker
+pnpm dev:all          # link, open one console per app, open the dashboard
+SKIP_LINK=1 ./scripts/dev-all.sh   # same, skip linking
+pnpm stop:all
+pnpm dashboard        # http://127.0.0.1:3999
 
-pnpm build:api
-pnpm build:webapp
-pnpm build:clients
-pnpm build:landing
-pnpm build:packages
+pnpm dev:api          # http://localhost:3001
+pnpm dev:worker
+pnpm dev:landing      # http://localhost:3000
+pnpm dev:webapp       # http://localhost:3002
+pnpm dev:clients      # http://localhost:3003
+pnpm dev:marketplace  # http://localhost:3004
+pnpm dev:admin        # http://localhost:3005
+pnpm dev:app          # Expo, http://localhost:8081
 
+pnpm build:api / build:webapp / build:clients / build:landing / build:packages
 pnpm lint:api / lint:app / lint:clients / lint:landing / lint:webapp
 pnpm typecheck:api / typecheck:app / typecheck:clients / typecheck:landing / typecheck:webapp / typecheck:packages
 ```
 
-These scripts assume all six repositories are cloned alongside this `package.json`, as described above.
+These scripts assume the sibling repositories are cloned alongside this `package.json`, as described above.
 
 ## Environment variables
 

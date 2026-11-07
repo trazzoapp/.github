@@ -61,6 +61,31 @@ for consumer in "${CONSUMERS[@]}"; do
   fi
 done
 
+# Turbopack follows the pnpm symlinks inside a package, but not a symlink
+# that jumps from trazzo-packages into trazzo-webapp/node_modules. Point the
+# webapp at the packages' React and TanStack Query so both sides import the
+# same files. `pnpm install` in the webapp recreates its own copies; re-run
+# this script after that.
+if [ -d "$ROOT/trazzo-webapp/node_modules" ] && [ -d "$PACKAGES_DIR/node_modules/.pnpm" ]; then
+  echo "==> Sharing trazzo-packages' React peers with trazzo-webapp"
+  share_peer() {
+    local name="$1"
+    local store="$2"
+    local link="$ROOT/trazzo-webapp/node_modules/$name"
+    if [ ! -d "$store" ]; then
+      echo "  ! missing $store"
+      return
+    fi
+    mkdir -p "$(dirname "$link")"
+    rm -rf "$link"
+    ln -s "$store" "$link"
+    echo "  - $name"
+  }
+  share_peer react "$PACKAGES_DIR/node_modules/.pnpm/react@19.3.0/node_modules/react"
+  share_peer react-dom "$PACKAGES_DIR/node_modules/.pnpm/react-dom@19.3.0_react@19.3.0/node_modules/react-dom"
+  share_peer @tanstack/react-query "$PACKAGES_DIR/node_modules/.pnpm/@tanstack+react-query@5.104.0_react@19.3.0/node_modules/@tanstack/react-query"
+fi
+
 echo "==> Done. Each consumer now resolves @trazzoapp/* from your local trazzo-packages checkout."
 echo "    Re-run 'pnpm build' in trazzo-packages (or 'pnpm dev' in the specific package) after edits."
 echo "    Run ./scripts/unlink-packages.sh when you're done to go back to the published versions."
