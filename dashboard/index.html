@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Trazzo local</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f6f3;
+        --ink: #2f3437;
+        --muted: #787774;
+        --line: #eaeaea;
+        --card: #ffffff;
+        --primary: #111111;
+        --primary-ink: #ffffff;
+        --up-bg: #edf3ec;
+        --up: #346538;
+        --down-bg: #fdebec;
+        --down: #9f2f2d;
+        --wait-bg: #fbf3db;
+        --wait: #956400;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161513;
+          --ink: #eceae4;
+          --muted: #9b9890;
+          --line: #2c2a27;
+          --card: #1e1c1a;
+          --primary: #eceae4;
+          --primary-ink: #161513;
+          --up-bg: #1d2a1e;
+          --up: #8fbf90;
+          --down-bg: #3a1d1c;
+          --down: #e8a09c;
+          --wait-bg: #322a16;
+          --wait: #e2c57a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "SF Pro Display", "Helvetica Neue", sans-serif;
+        line-height: 1.5;
+      }
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 48px 24px 80px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        align-items: flex-end;
+        padding-bottom: 28px;
+        border-bottom: 1px solid var(--line);
+      }
+      h1 {
+        font-family: "Iowan Old Style", Palatino, "Times New Roman", serif;
+        font-weight: 400;
+        font-size: 40px;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+        margin: 0 0 8px;
+      }
+      .lede {
+        color: var(--muted);
+        margin: 0;
+        font-size: 14px;
+      }
+      .clock {
+        font-family: "SF Mono", ui-monospace, monospace;
+        font-size: 12px;
+        color: var(--muted);
+        text-align: right;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 24px 0 32px;
+      }
+      button,
+      a.btn {
+        appearance: none;
+        border: 1px solid var(--line);
+        background: var(--card);
+        color: var(--ink);
+        font: inherit;
+        font-size: 13px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      button.primary,
+      a.btn.primary {
+        background: var(--primary);
+        color: var(--primary-ink);
+        border-color: var(--primary);
+      }
+      button:hover,
+      a.btn:hover {
+        transform: scale(0.99);
+      }
+      button.danger {
+        color: var(--down);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      article {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 18px 18px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-height: 168px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+      }
+      .name {
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+      .version {
+        font-family: "SF Mono", ui-monospace, monospace;
+        font-size: 12px;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .badge {
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--wait-bg);
+        color: var(--wait);
+      }
+      .badge.up {
+        background: var(--up-bg);
+        color: var(--up);
+      }
+      .badge.down {
+        background: var(--down-bg);
+        color: var(--down);
+      }
+      .meta {
+        font-family: "SF Mono", ui-monospace, monospace;
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: auto;
+      }
+      .links a {
+        font-size: 12px;
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Trazzo local</h1>
+          <p class="lede">Live probes against the apps started by <code>pnpm dev:all</code>.</p>
+        </div>
+        <div class="clock" id="clock">Waiting for first probe…</div>
+      </header>
+      <div class="actions">
+        <button class="primary" id="open-up">Open live apps</button>
+        <button id="open-all">Open every URL</button>
+        <a class="btn" href="http://localhost:3001/docs" target="_blank" rel="noreferrer">API docs</a>
+        <button class="danger" id="stop">Stop all</button>
+      </div>
+      <section class="grid" id="grid"></section>
+    </main>
+    <script>
+      const grid = document.getElementById("grid");
+      const clock = document.getElementById("clock");
+
+      function badgeClass(app) {
+        if (app.ok === true) return "badge up";
+        if (app.ok === false) return "badge down";
+        return "badge";
+      }
+
+      function badgeLabel(app) {
+        if (app.kind === "worker") return "console";
+        if (app.ok === true) return "up";
+        if (app.error === "timeout") return "timeout";
+        if (app.ok === false) return "down";
+        return "checking";
+      }
+
+      function render(payload) {
+        const stamp = new Date(payload.checkedAt);
+        clock.textContent = "Checked " + stamp.toLocaleTimeString();
+        grid.innerHTML = payload.apps
+          .map((app) => {
+            const latency = app.ms != null ? app.ms + " ms" : "—";
+            const code = app.status
+              ? String(app.status)
+              : app.error || (app.probe ? "offline" : "no HTTP");
+            const href = app.url
+              ? `<a href="${app.url}" target="_blank" rel="noreferrer">Open</a>`
+              : "";
+            const docs = app.docs
+              ? `<a href="${app.docs}" target="_blank" rel="noreferrer">Docs</a>`
+              : "";
+            const version = app.version ? `v${app.version}` : "unversioned";
+            return `<article>
+              <div class="row">
+                <div>
+                  <div class="name">${app.name}</div>
+                  <div class="version">${version}</div>
+                </div>
+                <span class="${badgeClass(app)}">${badgeLabel(app)}</span>
+              </div>
+              <div class="meta">${app.url || app.note || ""}<br>${code} · ${latency}</div>
+              <div class="links">${href}${docs}</div>
+            </article>`;
+          })
+          .join("");
+        window.__apps = payload.apps;
+      }
+
+      async function refresh() {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        render(await res.json());
+      }
+
+      function openList(filter) {
+        const apps = (window.__apps || []).filter(filter);
+        for (const app of apps) {
+          if (app.url) window.open(app.url, "_blank", "noopener");
+        }
+      }
+
+      document.getElementById("open-up").onclick = () => openList((app) => app.ok === true);
+      document.getElementById("open-all").onclick = () => openList((app) => Boolean(app.url));
+      document.getElementById("stop").onclick = async () => {
+        if (!confirm("Stop API, worker, Next apps, and Expo?")) return;
+        await fetch("/api/stop", { method: "POST" });
+        setTimeout(refresh, 400);
+      };
+
+      refresh();
+      setInterval(refresh, 2500);
+    </script>
+  </body>
+</html>

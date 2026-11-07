@@ -49,7 +49,15 @@ To iterate quickly on a shared package and see the effect in a consumer without 
 ./scripts/unlink-packages.sh
 ```
 
-These scripts use `pnpm link` (global symlinks) and never modify any `package.json`. After editing a package in `trazzo-packages`, run `pnpm build` there (or `pnpm dev` inside the specific package for watch mode) so linked consumers pick up the change.
+These scripts use `pnpm link <path>` (not global links) and write `link:` overrides into each consumer's `pnpm-workspace.yaml`. After editing a package in `trazzo-packages`, run `pnpm build` there (or `pnpm dev` inside the specific package for watch mode) so linked consumers pick up the change.
+
+To link, open one Terminal/iTerm console per app, and open the local dashboard:
+
+```bash
+pnpm dev:all
+```
+
+The dashboard lives at `http://127.0.0.1:3999` (`dashboard/index.html`). It probes each app and has shortcuts to open live URLs or stop everything.
 
 ## Setting up the full workspace
 
