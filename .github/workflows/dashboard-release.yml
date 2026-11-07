@@ -2,8 +2,13 @@ name: Build Trazzo Control
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "dashboard-v*"
+    paths:
+      - "dashboard-app/**"
+      - ".github/workflows/dashboard-release.yml"
   workflow_dispatch: {}
 
 jobs:
