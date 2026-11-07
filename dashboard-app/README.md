@@ -39,3 +39,13 @@ Output lands in `dashboard-app/release/`.
 - on demand via the Actions tab ("Run workflow")
 
 Each run uploads the installers as workflow artifacts you can download.
+
+### macOS: "is damaged and can't be opened"
+
+The mac build isn't notarized (no Apple Developer certificate in CI), so
+macOS quarantines the downloaded app and refuses to open it. It isn't
+actually damaged — clear the quarantine flag once, after unzipping/mounting:
+
+```bash
+xattr -cr "/path/to/Trazzo Control.app"
+```
