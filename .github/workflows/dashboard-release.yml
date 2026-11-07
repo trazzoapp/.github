@@ -1,0 +1,46 @@
+name: Build Trazzo Control
+
+on:
+  push:
+    tags:
+      - "dashboard-v*"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            script: build:mac
+          - os: ubuntu-latest
+            script: build:linux
+          - os: windows-latest
+            script: build:win
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: dashboard-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app
+        run: npm run ${{ matrix.script }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trazzo-control-${{ matrix.os }}
+          path: |
+            dashboard-app/release/*.dmg
+            dashboard-app/release/*.zip
+            dashboard-app/release/*.AppImage
+            dashboard-app/release/*.exe
+          if-no-files-found: ignore
