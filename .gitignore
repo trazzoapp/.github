@@ -1,0 +1,4 @@
+.next
+
+# Each trazzo-* folder is its own git repo
+/trazzo-*/
