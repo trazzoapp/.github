@@ -1,0 +1,64 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "trazzo-webapp-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "trazzo-webapp",
+        "run",
+        "dev"
+      ],
+      "port": 3002
+    },
+    {
+      "name": "trazzo-landing-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "trazzo-landing",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "trazzo-clients-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "trazzo-clients",
+        "run",
+        "dev"
+      ],
+      "port": 3003
+    },
+    {
+      "name": "trazzo-admin-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "trazzo-admin",
+        "run",
+        "dev"
+      ],
+      "port": 3005
+    },
+    {
+      "name": "trazzo-webapp-linked",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "trazzo-webapp",
+        "exec",
+        "next",
+        "dev",
+        "-p",
+        "3002",
+        "--webpack"
+      ],
+      "port": 3002
+    }
+  ]
+}
