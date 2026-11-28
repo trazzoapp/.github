@@ -86,6 +86,16 @@ if [ -d "$ROOT/trazzo-webapp/node_modules" ] && [ -d "$PACKAGES_DIR/node_modules
   share_peer @tanstack/react-query "$PACKAGES_DIR/node_modules/.pnpm/@tanstack+react-query@5.104.0_react@19.3.0/node_modules/@tanstack/react-query"
 fi
 
+# trazzo-api calls `extendZodWithOpenApi(z)` on its own zod, but the linked
+# @trazzoapp/core builds its schemas with trazzo-packages' zod — a different
+# copy, so `.openapi()` is missing on them. Point the API at the packages' zod.
+PACKAGES_ZOD="$(cd "$PACKAGES_DIR/core" && node -p 'require("path").dirname(require.resolve("zod/package.json"))' 2>/dev/null || true)"
+if [ -d "$ROOT/trazzo-api/node_modules" ] && [ -n "$PACKAGES_ZOD" ] && [ -d "$PACKAGES_ZOD" ]; then
+  echo "==> Sharing trazzo-packages' zod with trazzo-api"
+  rm -rf "$ROOT/trazzo-api/node_modules/zod"
+  ln -s "$PACKAGES_ZOD" "$ROOT/trazzo-api/node_modules/zod"
+fi
+
 echo "==> Done. Each consumer now resolves @trazzoapp/* from your local trazzo-packages checkout."
 echo "    Re-run 'pnpm build' in trazzo-packages (or 'pnpm dev' in the specific package) after edits."
 echo "    Run ./scripts/unlink-packages.sh when you're done to go back to the published versions."
